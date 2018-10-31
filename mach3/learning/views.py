@@ -8,4 +8,6 @@ from django.shortcuts import render
 
 
 def index(request):
-    return JsonResponse({'message':'Hello World'})
+    if request.method == 'POST':
+        return JsonResponse({'message':'Hello World'})
+    return render(request, 'general/index.html')

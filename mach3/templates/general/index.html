@@ -5,6 +5,11 @@
     <title>Mach III - Home</title>
 </head>
 <body>
-
+<form action="index.html" method="post">
+    {% csrf_token %}
+    <label for="label_img">Nutrition Label: </label>
+    <input id="label_img" type="image" name="label_img">
+    <input type="submit" value="Submit">
+</form>
 </body>
 </html>
