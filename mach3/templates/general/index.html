@@ -1,15 +1,14 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Mach III - Home</title>
-</head>
+{% extends 'general/base.html' %}
+{% block content %}
+<title>Mach III - Home</title>
 <body>
-<form action="index.html" method="post">
+<p></p>
+<p align="center">Upload Nutrition Label</p>
+<form action="{% url 'home' %}" method="post">
     {% csrf_token %}
     <label for="label_img">Nutrition Label: </label>
-    <input id="label_img" type="image" name="label_img">
+    <input id="label_img" type="file" name="label_img" accept="image/*">
+    <br>
     <input type="submit" value="Submit">
 </form>
-</body>
-</html>
+{% endblock %}

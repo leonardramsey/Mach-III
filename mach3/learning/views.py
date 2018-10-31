@@ -9,5 +9,6 @@ from django.shortcuts import render
 
 def index(request):
     if request.method == 'POST':
+        # hit AWS API w/ urllib
         return JsonResponse({'message':'Hello World'})
     return render(request, 'general/index.html')
