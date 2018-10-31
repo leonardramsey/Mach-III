@@ -4,9 +4,27 @@ To run web application:
 
 1. Clone repo
 2. Install dependencies via the following command:
+	
+	```shell
 	pip install -r requirements.txt
-3. Start a local server via the following command:
+	```
+3. If needed, update the database schema:
+	
+	```shell
+	python manage.py makemigrations
+	python manage.py migrate
+	```
+4. If needed, upload initial database records:
+	
+	```shell
+	python manage.py loaddata learning/fixtures/initial_data.json
+	```
+5. Start a local server via the following command:
+	
+	```shell
 	python manage.py runserver
-4. Access the web application via the following domain:
-	localhost:8000/<path>
+	```
+6. Access the web application via the following domain:
+	
+	```localhost:8000/<path>```
 		
