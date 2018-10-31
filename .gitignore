@@ -1,3 +1,4 @@
 .DS_Store
 *.pyc
-/.idea
+/.idea*
+mach3/.idea*
