@@ -17,7 +17,7 @@ from pandas.plotting import scatter_matrix
 # from sklearn.metrics import roc_curve
 # from sklearn.model_selection import cross_val_predict
 
-score_conversion = {'A' : 5, 'B': 4, 'C': 3, 'D': 2, 'E': 1}
+score_conversion = {'A' : 5, 'B': 4, 'C': 3, 'D': 2, 'E': 1, 0 : 0}
 
 # def data_cleanup(data):
 #     # number scaling and imputing
@@ -79,24 +79,24 @@ def ml():
                 columns.append(feature)
     label_info = pd.DataFrame(columns=columns)
     i = 0
-    print(data)
+    # print(data)
     # build dataframe
     for title in data:
         if 'NutriScore' in data[title]:
-            data[title]['NutriScore'] = score_conversion[data[title].get('NutriScore', 0)]
+            data[title]['NutriScore'] = int(score_conversion[data[title].get('NutriScore', 0)])
             label_info.loc[i] = pd.Series(data[title])
-        i+=1
-    print('----------------------- Original Data + Info -----------------------')
+            i+=1
+    label_info['NutriScore'] = pd.to_numeric(label_info['NutriScore'])
+    print('----------------------- Original Data -----------------------')
     print(label_info)
-
+    print('----------------------- Original Data Info -----------------------')
     # data info
     print(label_info.info())
     print(label_info.describe())
-    print('----------------------- Columns -----------------------')
-    print(list(label_info))
-    # label
     print('----------------------- Correlations -----------------------')
-    print(label_info.corr())
+#     print(label_info.keys())
+#     print(label_info.corr().keys())
+    print(label_info.corr()['NutriScore'].sort_values(ascending=False))
     # data clean
     label_info = label_info.drop(['file_name', 'url', 'nutrition_label_src'], axis=1)
 
