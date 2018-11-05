@@ -1,9 +1,4 @@
 #!/usr/bin/env python
-# Parse html tables from a given URL and output CSV.
-
-# Note: To install a missing python module foo do "easy_install foo"
-#   (or the new way is "pip install foo" but you might have to do
-#    "easy_install pip" first)
 
 from lxml import html
 import requests
