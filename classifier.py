@@ -98,7 +98,10 @@ def ml():
 #     print(label_info.corr().keys())
     print(label_info.corr()['NutriScore'].sort_values(ascending=False))
     # data clean
-    label_info = label_info.drop(['file_name', 'url', 'nutrition_label_src'], axis=1)
+#     label_info = label_info.drop(['file_name', 'url', 'nutrition_label_src'], axis=1)
+#     null_columns = label_info.columns[label_info.isna().any()].tolist()
+    label_info = label_info.dropna(thresh=len(label_info) - 300, axis=1)
+    print(label_info.info())
 
     # label_info_prepared = data_cleanup(label_info)
 
