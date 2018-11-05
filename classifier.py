@@ -6,21 +6,17 @@ import matplotlib
 import matplotlib.pyplot as plt
 import pandas as pd
 import json
-from sklearn.model_selection import train_test_split
 from pandas.plotting import scatter_matrix
-from sklearn.preprocessing import Imputer
-from sklearn.preprocessing import LabelEncoder
-from sklearn.preprocessing import OneHotEncoder
+from sklearn.preprocessing import Imputer, LabelEncoder, OneHotEncoder, StandardScaler
 from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import StandardScaler
-from sklearn.metrics import confusion_matrix, precision_score, recall_score, accuracy_score
-from sklearn.metrics import roc_curve
-from sklearn.model_selection import cross_val_predict
+from sklearn.metrics import confusion_matrix, precision_score, recall_score, accuracy_score, roc_curve
+from sklearn.model_selection import train_test_split, cross_val_predict
 from sklearn.linear_model import LogisticRegression
 from sklearn.multiclass import OneVsOneClassifier, OneVsRestClassifier
 from sklearn.svm import SVC
 from sklearn.tree import DecisionTreeClassifier
-from sklearn.ensemble import RandomForestClassifier
+from sklearn.linear_model import SGDClassifier
+from sklearn.ensemble import RandomForestClassifier, AdaBoostClassifier, VotingClassifier
 
 score_conversion = {'A': 5, 'B': 4, 'C': 3, 'D': 2, 'E': 1, 0: 0}
 score_conversion_binary = {'A': 1, 'B': 1, 'C': 0, 'D': 0, 'E': 0, 0: -1}
@@ -65,6 +61,7 @@ def classifier_metrics(y_test, y_pred):
     print(precision_score(y_test, y_pred, average='weighted'))
     print('----------------------- Recall Score -----------------------')
     print(recall_score(y_test, y_pred, average='weighted'))
+    print('\n')
 
 
 def ml():
@@ -136,6 +133,8 @@ def ml():
     y_test = test_set['NutriScore']
     print(y_test.head())
 
+    # data visualization
+
     # training/testing
     # logistic regression (basic)
     log_clf = OneVsOneClassifier(LogisticRegression(random_state=42))
@@ -158,9 +157,73 @@ def ml():
     print('----------------------- Random Forest Metrics -----------------------')
     classifier_metrics(y_test, y_pred_rnd_clf)
 
+    rnd_clf2 = RandomForestClassifier(n_estimators=200, random_state=42)
+    rnd_clf2.fit(X_train, y_train)
+    y_pred_rnd_clf2 = rnd_clf2.predict(X_test)
+    print('----------------------- Random Forest 2 Metrics -----------------------')
+    classifier_metrics(y_test, y_pred_rnd_clf2)
 
-#     lin_svm_clf = SVC(kernel="linear", C=float("inf"))
-#     rbf_svm_clf = SVC(kernel="rbf", C=float("inf"))
+    rnd_clf3 = RandomForestClassifier(n_estimators=500, random_state=42)
+    rnd_clf3.fit(X_train, y_train)
+    y_pred_rnd_clf3 = rnd_clf3.predict(X_test)
+    print('----------------------- Random Forest 3 Metrics -----------------------')
+    classifier_metrics(y_test, y_pred_rnd_clf3)
+
+    # stochastic gradient descent classifier
+    sgd_clf = SGDClassifier(max_iter=5, random_state=42, l1_ratio=.5)
+    sgd_clf.fit(X_train, y_train)
+    y_pred_sgd_clf = sgd_clf.predict(X_test)
+    print('----------------------- SGD Classifier Metrics -----------------------')
+    classifier_metrics(y_test, y_pred_sgd_clf)
+
+    # boosting
+    ada_clf = AdaBoostClassifier(DecisionTreeClassifier(max_depth=1), n_estimators=200,
+                                 algorithm="SAMME.R", learning_rate=0.5, random_state=42)
+    ada_clf.fit(X_train, y_train)
+    y_pred_ada_clf = ada_clf.predict(X_test)
+    print('----------------------- Adaboost Metrics -----------------------')
+    classifier_metrics(y_test, y_pred_ada_clf)
+
+    # voting
+    voting_clf = VotingClassifier(estimators=[('ada', ada_clf), ('rf', rnd_clf), ('tree', tree_clf)], voting='hard')
+    voting_clf.fit(X_train, y_train)
+    y_pred_voting_clf = voting_clf.predict(X_test)
+    print('----------------------- Voting Classifier (Hard) Metrics -----------------------')
+    classifier_metrics(y_test, y_pred_voting_clf)
+
+    voting_clf2 = VotingClassifier(estimators=[('ada', ada_clf), ('rf', rnd_clf), ('rf2', rnd_clf2)], voting='soft')
+    voting_clf2.fit(X_train, y_train)
+    y_pred_voting_clf2 = voting_clf2.predict(X_test)
+    print('----------------------- Voting Classifier (Soft) Metrics -----------------------')
+    classifier_metrics(y_test, y_pred_voting_clf2)
+
+    # SVM
+    c_list = [.1, 1, 10]
+    gamma_list = [.01, .1, 1, 5]
+    hyperparams = [(g, c) for g in gamma_list for c in c_list]
+    print('-------------------- Possible Hyperparameters --------------------')
+    print(hyperparams)
+    best_gamma_C = None
+    best_accuracy = 0
+    # linear
+    count1 = 1
+    for c in c_list:
+        lin_svm_clf = SVC(kernel="rbf", C=float("inf"))
+        lin_svm_clf.fit(X_train, y_train)
+        y_pred_lin_svm_clf = lin_svm_clf.predict(X_test)
+        print('----------------------- Linear SVC %d Metrics -----------------------' % count1)
+        classifier_metrics(y_test, y_pred_lin_svm_clf)
+        count1 += 1
+    # rbf
+    count2 = 1
+    for gamma, C in hyperparams:
+        rbf_svm_clf = SVC(kernel="rbf", gamma=gamma, C=C)
+        rbf_svm_clf.fit(X_train, y_train)
+        y_pred_rbf_svm_clf = rbf_svm_clf.predict(X_test)
+        print('----------------------- RBF SVC %d Metrics -----------------------' % count2)
+        classifier_metrics(y_test, y_pred_rbf_svm_clf)
+        count2 += 1
+
 
 if __name__ == '__main__':
     ml()
