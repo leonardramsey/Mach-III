@@ -6,113 +6,123 @@ import matplotlib
 import matplotlib.pyplot as plt
 import pandas as pd
 import json
-# from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split
 from pandas.plotting import scatter_matrix
-# from sklearn.preprocessing import Imputer
-# from sklearn.preprocessing import LabelEncoder
-# from sklearn.preprocessing import OneHotEncoder
-# from sklearn.pipeline import Pipeline
-# from sklearn.preprocessing import StandardScaler
-# from sklearn.metrics import precision_score, recall_score, accuracy_score
-# from sklearn.metrics import roc_curve
-# from sklearn.model_selection import cross_val_predict
+from sklearn.preprocessing import Imputer
+from sklearn.preprocessing import LabelEncoder
+from sklearn.preprocessing import OneHotEncoder
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import StandardScaler
+from sklearn.metrics import precision_score, recall_score, accuracy_score
+from sklearn.metrics import roc_curve
+from sklearn.model_selection import cross_val_predict
 
-score_conversion = {'A' : 5, 'B': 4, 'C': 3, 'D': 2, 'E': 1, 0 : 0}
+score_conversion = {'A': 5, 'B': 4, 'C': 3, 'D': 2, 'E': 1, 0: 0}
 
-# def data_cleanup(data):
-#     # number scaling and imputing
-#     cat_attribs = ['ISO country code', 'Country', 'Sub-national region','World region']
-#     mpi_num = data.drop(cat_attribs, axis=1)
-#     num_attribs = list(mpi_num)
-#     mpi_cat = data.drop(num_attribs, axis=1)
-#
-#     num_pipeline = Pipeline([
-#          ('imputer', Imputer(strategy="median")),
-#          ('std_scaler', StandardScaler()),
-#     ])
-#
-#     mpi_num_tr_nd = num_pipeline.fit_transform(mpi_num)
-#
-#     mpi_num_tr = pd.DataFrame(mpi_num_tr_nd, columns=mpi_num.columns,
-#                               index = list(data.index.values))
-#
-#     print(mpi_num_tr.head())
-#     # encoding of categories/text
-#     lab_encoder = LabelEncoder()
-#     cat_encoder = OneHotEncoder(sparse=False)
-#
-#     # label encoder
-#     mpi_enc_cc = lab_encoder.fit_transform(data['ISO country code'])
-#     mpi_enc_country = lab_encoder.fit_transform(data['Country'])
-#     mpi_enc_snr = lab_encoder.fit_transform(data['Sub-national region'])
-#     mpi_enc_wr = lab_encoder.fit_transform(data['World region'])
-#
-#     # cat encoder (OneHotEncoder)
-#     mpi_cat_cc_hot = cat_encoder.fit_transform(mpi_enc_cc.reshape(-1,1))
-#     mpi_cat_country_hot = cat_encoder.fit_transform(mpi_enc_country.reshape(-1,1))
-#     mpi_cat_snr_hot = cat_encoder.fit_transform(mpi_enc_snr.reshape(-1,1))
-#     mpi_cat_wr_hot = cat_encoder.fit_transform(mpi_enc_wr.reshape(-1,1))
-#
-#     # prepared data
-#     mpi_data_prepared = data
-#     # categories
-#     mpi_data_prepared['ISO country code'] = mpi_cat_cc_hot
-#     mpi_data_prepared['Country'] = mpi_cat_country_hot
-#     mpi_data_prepared['Sub-national region'] = mpi_cat_snr_hot
-#     mpi_data_prepared['World region'] = mpi_cat_wr_hot
-#     # numbers
-#     mpi_data_prepared['MPI Regional'] = mpi_num_tr['MPI Regional']
-#     mpi_data_prepared['Headcount Ratio Regional'] = mpi_num_tr['Headcount Ratio Regional']
-#     mpi_data_prepared['Intensity of deprivation Regional'] = mpi_num_tr['Intensity of deprivation Regional']
-#     return mpi_data_prepared
+
+# data clean
+def data_cleanup(data):
+    # number scaling and imputing
+    if 'NutriScore' in data:
+        data = data.drop('NutriScore', axis=1)
+    data_num = data
+    num_attribs = list(data_num)
+
+    num_pipeline = Pipeline([
+        ('imputer', Imputer(strategy="median")),
+        ('std_scaler', StandardScaler()),
+    ])
+
+    data_num_tr_nd = num_pipeline.fit_transform(data_num)
+
+    data_num_tr = pd.DataFrame(data_num_tr_nd, columns=data_num.columns,
+                               index=list(data.index.values))
+
+    print(data_num_tr.head())
+
+    # prepared data
+    data_prepared = data
+
+    # update columns in processed data frame
+    for feature in data_prepared:
+        data_prepared[feature] = data_num_tr[feature]
+
+    return data_prepared
+
 
 def ml():
     # read in data
-    columns = []
     print('Reading data...')
     with open('data.json') as f:
         data = json.load(f)
+
     # get the columns
+    columns = []
     for title in data:
         for feature in data[title]:
             if feature not in columns:
                 columns.append(feature)
     label_info = pd.DataFrame(columns=columns)
+
     i = 0
-    # print(data)
     # build dataframe
     for title in data:
         if 'NutriScore' in data[title]:
-            data[title]['NutriScore'] = int(score_conversion[data[title].get('NutriScore', 0)])
+            data[title]['NutriScore'] = score_conversion[data[title].get('NutriScore', 0)]
             label_info.loc[i] = pd.Series(data[title])
-            i+=1
+            i += 1
     label_info['NutriScore'] = pd.to_numeric(label_info['NutriScore'])
-    print('----------------------- Original Data -----------------------')
-    print(label_info)
-    print('----------------------- Original Data Info -----------------------')
+
     # data info
+    print('----------------------- Original Data -----------------------')
+    print(label_info.head())
+    print('----------------------- Original Data Info -----------------------')
     print(label_info.info())
     print(label_info.describe())
     print('----------------------- Correlations -----------------------')
-#     print(label_info.keys())
-#     print(label_info.corr().keys())
     print(label_info.corr()['NutriScore'].sort_values(ascending=False))
+
     # data clean
-#     label_info = label_info.drop(['file_name', 'url', 'nutrition_label_src'], axis=1)
-#     null_columns = label_info.columns[label_info.isna().any()].tolist()
     label_info = label_info.dropna(thresh=len(label_info) - 300, axis=1)
+    label_info = label_info.drop(['Nutrition score  France', 'url', 'file_name', 'nutrition_label_src', 'sno'], axis=1)
+    print('----------------------- Updated Data Info (after removing poor features) -----------------------')
     print(label_info.info())
 
-    # label_info_prepared = data_cleanup(label_info)
+    for feature in label_info:
+        print(feature)
+        try:
+            label_info = label_info.apply(pd.to_numeric, errors='coerce')
+        except Exception:
+            print(str(feature) + " - unable to cast to numeric data type.")
+
+    print('----------------------- Updated Data Info (after casting) -----------------------')
+    print(label_info.info())
+    print(
+        '----------------------- Updated Correlations (after removing poor features and casting) -----------------------')
+    print(label_info.corr()['NutriScore'].sort_values(ascending=False))
+
+    train_set, test_set = train_test_split(label_info, test_size=0.2, random_state=48, stratify=label_info.NutriScore)
 
     # data split
+    print('----------------------- X_train -----------------------')
+    X_train = data_cleanup(train_set)
+    print(X_train.head())
+    print('----------------------- y_train -----------------------')
+    y_train = train_set['NutriScore']
+    print(y_train.head())
+    print('----------------------- X_test -----------------------')
+    X_test = data_cleanup(test_set)
+    print(X_test.head())
+    print('----------------------- y_test -----------------------')
+    y_test = test_set['NutriScore']
+    print(y_test.head())
+
 
     # training
 
     # testing
 
     # output
-
 
 
 if __name__ == '__main__':
