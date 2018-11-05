@@ -13,11 +13,17 @@ from sklearn.preprocessing import LabelEncoder
 from sklearn.preprocessing import OneHotEncoder
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
-from sklearn.metrics import precision_score, recall_score, accuracy_score
+from sklearn.metrics import confusion_matrix, precision_score, recall_score, accuracy_score
 from sklearn.metrics import roc_curve
 from sklearn.model_selection import cross_val_predict
+from sklearn.linear_model import LogisticRegression
+from sklearn.multiclass import OneVsOneClassifier, OneVsRestClassifier
+from sklearn.svm import SVC
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.ensemble import RandomForestClassifier
 
 score_conversion = {'A': 5, 'B': 4, 'C': 3, 'D': 2, 'E': 1, 0: 0}
+score_conversion_binary = {'A': 1, 'B': 1, 'C': 0, 'D': 0, 'E': 0, 0: -1}
 
 
 # data clean
@@ -50,6 +56,17 @@ def data_cleanup(data):
     return data_prepared
 
 
+def classifier_metrics(y_test, y_pred):
+    print('----------------------- Accuracy Score -----------------------')
+    print(accuracy_score(y_test, y_pred))
+    print('----------------------- Confusion Matrix -----------------------')
+    print(confusion_matrix(y_test, y_pred))
+    print('----------------------- Precision Score -----------------------')
+    print(precision_score(y_test, y_pred, average='weighted'))
+    print('----------------------- Recall Score -----------------------')
+    print(recall_score(y_test, y_pred, average='weighted'))
+
+
 def ml():
     # read in data
     print('Reading data...')
@@ -68,7 +85,7 @@ def ml():
     # build dataframe
     for title in data:
         if 'NutriScore' in data[title]:
-            data[title]['NutriScore'] = score_conversion[data[title].get('NutriScore', 0)]
+            data[title]['NutriScore'] = score_conversion_binary[data[title].get('NutriScore', 0)]
             label_info.loc[i] = pd.Series(data[title])
             i += 1
     label_info['NutriScore'] = pd.to_numeric(label_info['NutriScore'])
@@ -83,7 +100,9 @@ def ml():
     print(label_info.corr()['NutriScore'].sort_values(ascending=False))
 
     # data clean
-    label_info = label_info.dropna(thresh=len(label_info) - 300, axis=1)
+    label_info = label_info.fillna(0)
+    #     label_info = label_info.dropna(thresh=len(label_info) - 750, axis=1)
+    label_info = label_info.dropna(thresh=25, axis=0)
     label_info = label_info.drop(['Nutrition score  France', 'url', 'file_name', 'nutrition_label_src', 'sno'], axis=1)
     print('----------------------- Updated Data Info (after removing poor features) -----------------------')
     print(label_info.info())
@@ -117,13 +136,31 @@ def ml():
     y_test = test_set['NutriScore']
     print(y_test.head())
 
+    # training/testing
+    # logistic regression (basic)
+    log_clf = OneVsOneClassifier(LogisticRegression(random_state=42))
+    log_clf.fit(X_train, y_train)
+    y_pred_log_clf = log_clf.predict(X_test)
+    print('----------------------- Logistic Regression Metrics -----------------------')
+    classifier_metrics(y_test, y_pred_log_clf)
 
-    # training
+    # decision tree
+    tree_clf = DecisionTreeClassifier(max_depth=len(list(label_info)), random_state=42)
+    tree_clf.fit(X_train, y_train)
+    y_pred_tree_clf = tree_clf.predict(X_test)
+    print('----------------------- Decision Tree Metrics -----------------------')
+    classifier_metrics(y_test, y_pred_tree_clf)
 
-    # testing
+    # random forest
+    rnd_clf = RandomForestClassifier(random_state=42)
+    rnd_clf.fit(X_train, y_train)
+    y_pred_rnd_clf = rnd_clf.predict(X_test)
+    print('----------------------- Random Forest Metrics -----------------------')
+    classifier_metrics(y_test, y_pred_rnd_clf)
 
-    # output
 
+#     lin_svm_clf = SVC(kernel="linear", C=float("inf"))
+#     rbf_svm_clf = SVC(kernel="rbf", C=float("inf"))
 
 if __name__ == '__main__':
     ml()
