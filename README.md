@@ -11,18 +11,18 @@ To run web application:
 3. If needed, update the database schema:
 	
 	```shell
-	python manage.py makemigrations
-	python manage.py migrate
+	python mach3/manage.py makemigrations
+	python mach3/manage.py migrate
 	```
 4. If needed, upload initial database records:
 	
 	```shell
-	python manage.py loaddata learning/fixtures/initial_data.json
+	python mach3/manage.py loaddata learning/fixtures/initial_data.json
 	```
 5. Start a local server via the following command:
 	
 	```shell
-	python manage.py runserver
+	python mach3/manage.py runserver
 	```
 6. Access the web application via the following domain:
 	
