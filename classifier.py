@@ -67,7 +67,7 @@ def classifier_metrics(y_test, y_pred):
 def ml():
     # read in data
     print('Reading data...')
-    with open('data.json') as f:
+    with open('data_v0.json') as f:
         data = json.load(f)
 
     # get the columns
