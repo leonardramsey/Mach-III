@@ -67,7 +67,7 @@ def classifier_metrics(y_test, y_pred):
 def ml():
     # read in data
     print('Reading data...')
-    with open('data_v0.json') as f:
+    with open('data/data_v1.json') as f:
         data = json.load(f)
 
     # get the columns
@@ -207,20 +207,20 @@ def ml():
     best_accuracy = 0
     # linear
     count1 = 1
-    for c in c_list:
-        lin_svm_clf = SVC(kernel="rbf", C=float("inf"))
+    for C in c_list:
+        lin_svm_clf = SVC(kernel="linear", C=C, probability=True)
         lin_svm_clf.fit(X_train, y_train)
         y_pred_lin_svm_clf = lin_svm_clf.predict(X_test)
-        print('----------------------- Linear SVC %d Metrics -----------------------' % count1)
+        print('----------------------- Linear SVC (' + str(count1) + '): C=' + str(C) + ' - Metrics -----------------------')
         classifier_metrics(y_test, y_pred_lin_svm_clf)
         count1 += 1
     # rbf
     count2 = 1
     for gamma, C in hyperparams:
-        rbf_svm_clf = SVC(kernel="rbf", gamma=gamma, C=C)
+        rbf_svm_clf = SVC(kernel="rbf", gamma=gamma, C=C, probability=True)
         rbf_svm_clf.fit(X_train, y_train)
         y_pred_rbf_svm_clf = rbf_svm_clf.predict(X_test)
-        print('----------------------- RBF SVC %d Metrics -----------------------' % count2)
+        print('----------------------- RBF SVC (' + str(count2) + '): C=' + str(C) + ', G=' + str(gamma) + ' - Metrics -----------------------' )
         classifier_metrics(y_test, y_pred_rbf_svm_clf)
         count2 += 1
 
