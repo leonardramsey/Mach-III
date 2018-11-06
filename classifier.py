@@ -20,6 +20,35 @@ from sklearn.ensemble import RandomForestClassifier, AdaBoostClassifier, VotingC
 
 score_conversion = {'A': 5, 'B': 4, 'C': 3, 'D': 2, 'E': 1, 0: 0}
 score_conversion_binary = {'A': 1, 'B': 1, 'C': 0, 'D': 0, 'E': 0, 0: -1}
+best_accuracy_value = 0
+best_accuracy_model = ""
+best_precision_value = 0
+best_precision_model = ""
+best_recall_value = 0
+best_recall_model = ""
+
+
+def update_optimal_models(accuracy, precision, recall, model):
+    global best_accuracy_value, best_accuracy_model, best_precision_value, best_precision_model, best_recall_value, best_recall_model
+
+    if accuracy > best_accuracy_value:
+        best_accuracy_value = accuracy
+        best_accuracy_model = model
+    if precision > best_precision_value:
+        best_precision_value = precision
+        best_precision_model = model
+    if recall > best_recall_value:
+        best_recall_value = recall
+        best_recall_model = model
+
+
+def print_optimal_models():
+    print('\nThe model with the highest accuracy is ' + best_accuracy_model + '.')
+    print('\nThe accuracy of this model is ' + str(best_accuracy_value) + '.')
+    print('\nThe model with the highest precision is ' + best_precision_model + '.')
+    print('\nThe precision of this model is ' + str(best_precision_value) + '.')
+    print('\nThe model with the highest recall is ' + best_recall_model + '.')
+    print('\nThe recall of this model is ' + str(best_recall_value) + '.')
 
 
 # data clean
@@ -28,7 +57,6 @@ def data_cleanup(data):
     if 'NutriScore' in data:
         data = data.drop('NutriScore', axis=1)
     data_num = data
-    num_attribs = list(data_num)
 
     num_pipeline = Pipeline([
         ('imputer', Imputer(strategy="median")),
@@ -39,8 +67,6 @@ def data_cleanup(data):
 
     data_num_tr = pd.DataFrame(data_num_tr_nd, columns=data_num.columns,
                                index=list(data.index.values))
-
-    print(data_num_tr.head())
 
     # prepared data
     data_prepared = data
@@ -62,6 +88,9 @@ def classifier_metrics(y_test, y_pred):
     print('----------------------- Recall Score -----------------------')
     print(recall_score(y_test, y_pred, average='weighted'))
     print('\n')
+    return accuracy_score(y_test, y_pred), precision_score(y_test, y_pred, average='weighted'), recall_score(y_test,
+                                                                                                             y_pred,
+                                                                                                             average='weighted')
 
 
 def ml():
@@ -136,66 +165,51 @@ def ml():
     # data visualization
 
     # training/testing
+    # stochastic gradient descent classifier
+    sgd_clf = SGDClassifier(max_iter=5, random_state=42, l1_ratio=.5)
+    sgd_clf.fit(X_train, y_train)
+    y_pred_sgd_clf = sgd_clf.predict(X_test)
+    print('----------------------- SGD Classifier Metrics -----------------------')
+    accuracy, precision, recall = classifier_metrics(y_test, y_pred_sgd_clf)
+    update_optimal_models(accuracy, precision, recall, "SGD Classifier")
+
     # logistic regression (basic)
     log_clf = OneVsOneClassifier(LogisticRegression(random_state=42))
     log_clf.fit(X_train, y_train)
     y_pred_log_clf = log_clf.predict(X_test)
     print('----------------------- Logistic Regression Metrics -----------------------')
-    classifier_metrics(y_test, y_pred_log_clf)
+    accuracy, precision, recall = classifier_metrics(y_test, y_pred_log_clf)
+    update_optimal_models(accuracy, precision, recall, "Logistic Regression")
 
     # decision tree
     tree_clf = DecisionTreeClassifier(max_depth=len(list(label_info)), random_state=42)
     tree_clf.fit(X_train, y_train)
     y_pred_tree_clf = tree_clf.predict(X_test)
     print('----------------------- Decision Tree Metrics -----------------------')
-    classifier_metrics(y_test, y_pred_tree_clf)
+    accuracy, precision, recall = classifier_metrics(y_test, y_pred_tree_clf)
+    update_optimal_models(accuracy, precision, recall, "Decision Tree")
 
     # random forest
     rnd_clf = RandomForestClassifier(random_state=42)
     rnd_clf.fit(X_train, y_train)
     y_pred_rnd_clf = rnd_clf.predict(X_test)
-    print('----------------------- Random Forest Metrics -----------------------')
-    classifier_metrics(y_test, y_pred_rnd_clf)
+    print('----------------------- Random Forest 1 Metrics -----------------------')
+    accuracy, precision, recall = classifier_metrics(y_test, y_pred_rnd_clf)
+    update_optimal_models(accuracy, precision, recall, "Random Forest 1")
 
     rnd_clf2 = RandomForestClassifier(n_estimators=200, random_state=42)
     rnd_clf2.fit(X_train, y_train)
     y_pred_rnd_clf2 = rnd_clf2.predict(X_test)
     print('----------------------- Random Forest 2 Metrics -----------------------')
-    classifier_metrics(y_test, y_pred_rnd_clf2)
+    accuracy, precision, recall = classifier_metrics(y_test, y_pred_rnd_clf2)
+    update_optimal_models(accuracy, precision, recall, "Random Forest 2")
 
     rnd_clf3 = RandomForestClassifier(n_estimators=500, random_state=42)
     rnd_clf3.fit(X_train, y_train)
     y_pred_rnd_clf3 = rnd_clf3.predict(X_test)
     print('----------------------- Random Forest 3 Metrics -----------------------')
-    classifier_metrics(y_test, y_pred_rnd_clf3)
-
-    # stochastic gradient descent classifier
-    sgd_clf = SGDClassifier(max_iter=5, random_state=42, l1_ratio=.5)
-    sgd_clf.fit(X_train, y_train)
-    y_pred_sgd_clf = sgd_clf.predict(X_test)
-    print('----------------------- SGD Classifier Metrics -----------------------')
-    classifier_metrics(y_test, y_pred_sgd_clf)
-
-    # boosting
-    ada_clf = AdaBoostClassifier(DecisionTreeClassifier(max_depth=1), n_estimators=200,
-                                 algorithm="SAMME.R", learning_rate=0.5, random_state=42)
-    ada_clf.fit(X_train, y_train)
-    y_pred_ada_clf = ada_clf.predict(X_test)
-    print('----------------------- Adaboost Metrics -----------------------')
-    classifier_metrics(y_test, y_pred_ada_clf)
-
-    # voting
-    voting_clf = VotingClassifier(estimators=[('ada', ada_clf), ('rf', rnd_clf), ('tree', tree_clf)], voting='hard')
-    voting_clf.fit(X_train, y_train)
-    y_pred_voting_clf = voting_clf.predict(X_test)
-    print('----------------------- Voting Classifier (Hard) Metrics -----------------------')
-    classifier_metrics(y_test, y_pred_voting_clf)
-
-    voting_clf2 = VotingClassifier(estimators=[('ada', ada_clf), ('rf', rnd_clf), ('rf2', rnd_clf2)], voting='soft')
-    voting_clf2.fit(X_train, y_train)
-    y_pred_voting_clf2 = voting_clf2.predict(X_test)
-    print('----------------------- Voting Classifier (Soft) Metrics -----------------------')
-    classifier_metrics(y_test, y_pred_voting_clf2)
+    accuracy, precision, recall = classifier_metrics(y_test, y_pred_rnd_clf3)
+    update_optimal_models(accuracy, precision, recall, "Random Forest 3")
 
     # SVM
     c_list = [.1, 1, 10]
@@ -203,26 +217,80 @@ def ml():
     hyperparams = [(g, c) for g in gamma_list for c in c_list]
     print('-------------------- Possible Hyperparameters --------------------')
     print(hyperparams)
+    best_C = None
     best_gamma_C = None
-    best_accuracy = 0
-    # linear
+    best_precision_lin = 0
+    best_precision_rbf = 0
+    # Linear SVC
     count1 = 1
     for C in c_list:
         lin_svm_clf = SVC(kernel="linear", C=C, probability=True)
         lin_svm_clf.fit(X_train, y_train)
         y_pred_lin_svm_clf = lin_svm_clf.predict(X_test)
-        print('----------------------- Linear SVC (' + str(count1) + '): C=' + str(C) + ' - Metrics -----------------------')
-        classifier_metrics(y_test, y_pred_lin_svm_clf)
+        print('----------------------- Linear SVC (' + str(count1) + '): C=' + str(
+            C) + ' - Metrics -----------------------')
+        accuracy, precision, recall = classifier_metrics(y_test, y_pred_lin_svm_clf)
+        if precision > best_precision_lin:
+            best_precision_lin = precision
+            best_C = C
         count1 += 1
-    # rbf
+
+    # RBF SVC
     count2 = 1
     for gamma, C in hyperparams:
         rbf_svm_clf = SVC(kernel="rbf", gamma=gamma, C=C, probability=True)
         rbf_svm_clf.fit(X_train, y_train)
         y_pred_rbf_svm_clf = rbf_svm_clf.predict(X_test)
-        print('----------------------- RBF SVC (' + str(count2) + '): C=' + str(C) + ', G=' + str(gamma) + ' - Metrics -----------------------' )
-        classifier_metrics(y_test, y_pred_rbf_svm_clf)
+        print('----------------------- RBF SVC (' + str(count2) + '): C=' + str(C) + ', G=' + str(
+            gamma) + ' - Metrics -----------------------')
+        accuracy, precision, recall = classifier_metrics(y_test, y_pred_rbf_svm_clf)
+        if precision > best_precision_rbf:
+            best_precision_rbf = precision
+            best_gamma_C = (gamma, C)
         count2 += 1
+
+    # best Linear SVC
+    lin_svm_clf = SVC(kernel="linear", C=best_C, probability=True)
+    lin_svm_clf.fit(X_train, y_train)
+    y_pred_lin_svm_clf = lin_svm_clf.predict(X_test)
+    print('----------------------- Linear SVC: C=' + str(C) + ' - Metrics -----------------------')
+    accuracy, precision, recall = classifier_metrics(y_test, y_pred_lin_svm_clf)
+    update_optimal_models(accuracy, precision, recall, 'Linear SVC: C=' + str(C))
+
+    # best RBF SVC
+    rbf_svm_clf = SVC(kernel="rbf", gamma=best_gamma_C[0], C=best_gamma_C[1], probability=True)
+    rbf_svm_clf.fit(X_train, y_train)
+    y_pred_rbf_svm_clf = rbf_svm_clf.predict(X_test)
+    print('----------------------- RBF SVC: C=' + str(best_gamma_C[1]) + ', G=' + str(
+        best_gamma_C[0]) + ' - Metrics -----------------------')
+    accuracy, precision, recall = classifier_metrics(y_test, y_pred_rbf_svm_clf)
+    update_optimal_models(accuracy, precision, recall,
+                          'RBF SVC: C=' + str(best_gamma_C[1]) + ', G=' + str(best_gamma_C[0]))
+
+    # boosting
+    ada_clf = AdaBoostClassifier(DecisionTreeClassifier(max_depth=1), n_estimators=200,
+                                 algorithm="SAMME.R", learning_rate=0.5, random_state=42)
+    ada_clf.fit(X_train, y_train)
+    y_pred_ada_clf = ada_clf.predict(X_test)
+    print('----------------------- Adaboost Metrics -----------------------')
+    accuracy, precision, recall = classifier_metrics(y_test, y_pred_ada_clf)
+    update_optimal_models(accuracy, precision, recall, "Adabost")
+
+    # voting
+    voting_clf = VotingClassifier(estimators=[('ada', ada_clf), ('rf', rnd_clf), ('tree', tree_clf)], voting='hard')
+    voting_clf.fit(X_train, y_train)
+    y_pred_voting_clf = voting_clf.predict(X_test)
+    print('----------------------- Voting Classifier (Hard) Metrics -----------------------')
+    accuracy, precision, recall = classifier_metrics(y_test, y_pred_voting_clf)
+    update_optimal_models(accuracy, precision, recall, "Voting Classifier (Hard)")
+
+    voting_clf2 = VotingClassifier(estimators=[('ada', ada_clf), ('rf', rnd_clf), ('rf2', rnd_clf2)], voting='soft')
+    voting_clf2.fit(X_train, y_train)
+    y_pred_voting_clf2 = voting_clf2.predict(X_test)
+    print('----------------------- Voting Classifier (Soft) Metrics -----------------------')
+    accuracy, precision, recall = classifier_metrics(y_test, y_pred_voting_clf2)
+    update_optimal_models(accuracy, precision, recall, "Voting Classifier (Soft)")
+    print_optimal_models()
 
 
 if __name__ == '__main__':
