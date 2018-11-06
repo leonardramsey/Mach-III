@@ -16,10 +16,12 @@ from sklearn.multiclass import OneVsOneClassifier, OneVsRestClassifier
 from sklearn.svm import SVC
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.linear_model import SGDClassifier
-from sklearn.ensemble import RandomForestClassifier, AdaBoostClassifier, VotingClassifier
+from sklearn.ensemble import RandomForestClassifier, AdaBoostClassifier, VotingClassifier, ExtraTreesClassifier
+from sklearn.neural_network import MLPClassifier
 
 score_conversion = {'A': 5, 'B': 4, 'C': 3, 'D': 2, 'E': 1, 0: 0}
 score_conversion_binary = {'A': 1, 'B': 1, 'C': 0, 'D': 0, 'E': 0, 0: -1}
+
 best_accuracy_value = 0
 best_accuracy_model = ""
 best_precision_value = 0
@@ -268,7 +270,7 @@ def ml():
                           'RBF SVC: C=' + str(best_gamma_C[1]) + ', G=' + str(best_gamma_C[0]))
 
     # boosting
-    ada_clf = AdaBoostClassifier(DecisionTreeClassifier(max_depth=1), n_estimators=200,
+    ada_clf = AdaBoostClassifier(DecisionTreeClassifier(max_depth=10), n_estimators=200,
                                  algorithm="SAMME.R", learning_rate=0.5, random_state=42)
     ada_clf.fit(X_train, y_train)
     y_pred_ada_clf = ada_clf.predict(X_test)
@@ -277,19 +279,29 @@ def ml():
     update_optimal_models(accuracy, precision, recall, "Adabost")
 
     # voting
-    voting_clf = VotingClassifier(estimators=[('ada', ada_clf), ('rf', rnd_clf), ('tree', tree_clf)], voting='hard')
+    voting_clf = VotingClassifier(estimators=[('rf2', rnd_clf2), ('rf3', rnd_clf3), ('rbf', rbf_svm_clf)],
+                                  voting='hard')
     voting_clf.fit(X_train, y_train)
     y_pred_voting_clf = voting_clf.predict(X_test)
     print('----------------------- Voting Classifier (Hard) Metrics -----------------------')
     accuracy, precision, recall = classifier_metrics(y_test, y_pred_voting_clf)
     update_optimal_models(accuracy, precision, recall, "Voting Classifier (Hard)")
 
-    voting_clf2 = VotingClassifier(estimators=[('ada', ada_clf), ('rf', rnd_clf), ('rf2', rnd_clf2)], voting='soft')
+    voting_clf2 = VotingClassifier(estimators=[('rf2', rnd_clf2), ('rf3', rnd_clf3), ('rbf', rbf_svm_clf)],
+                                   voting='soft')
     voting_clf2.fit(X_train, y_train)
     y_pred_voting_clf2 = voting_clf2.predict(X_test)
     print('----------------------- Voting Classifier (Soft) Metrics -----------------------')
     accuracy, precision, recall = classifier_metrics(y_test, y_pred_voting_clf2)
     update_optimal_models(accuracy, precision, recall, "Voting Classifier (Soft)")
+
+    extra_trees_clf = ExtraTreesClassifier(n_estimators=200, random_state=42)
+    extra_trees_clf.fit(X_train, y_train)
+    y_pred_extra_trees_clf = extra_trees_clf.predict(X_test)
+    print('----------------------- Extra-Trees Metrics -----------------------')
+    accuracy, precision, recall = classifier_metrics(y_test, y_pred_extra_trees_clf)
+    update_optimal_models(accuracy, precision, recall, "Extra-Trees")
+
     print_optimal_models()
 
 
