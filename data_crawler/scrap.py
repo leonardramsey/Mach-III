@@ -1,9 +1,4 @@
 #!/usr/bin/env python
-# Parse html tables from a given URL and output CSV.
-
-# Note: To install a missing python module foo do "easy_install foo"
-#   (or the new way is "pip install foo" but you might have to do
-#    "easy_install pip" first)
 
 from lxml import html
 import requests
@@ -22,6 +17,7 @@ import json
 
 baseurl = "https://us.openfoodfacts.org"
 data = {}
+#count = sys.argv[2]
 count = 1
 path = "output/"
 n = 0
@@ -87,20 +83,24 @@ for i in range(1,8769):
   tree = html.fromstring(page.content)
   for product in tree.xpath('//ul[@class="products"]')[0]:
     for li in product:
-      print(".....product "+str(count))
       prod_url = baseurl+li.attrib['href']
-      url = baseurl+li.attrib['href']
       newpage = requests.get(prod_url)
       newtree = html.fromstring(newpage.content)
       if len(newtree.xpath('//img[@class="show-for-xlarge-up"]')) > 5:
         name = newtree.xpath('//h1[@itemprop="name"]/text()')[0]
+        label_src = newtree.xpath('//img[@class="show-for-xlarge-up"]')[5].attrib['src']
+        if "nutrition_en" not in label_src:
+            continue
+        flag = 0
+        flag2 = 0
         data[name] = {}
         data[name]['sno'] = count
         data[name]['file_name'] = str(count)+'.jpg'
         data[name]['url'] = prod_url
         data[name]['nutrition_label_src'] = newtree.xpath('//img[@class="show-for-xlarge-up"]')[5].attrib['src']
+        count+=1
         #Opening soup for nutrition truth
-        soup = opensoup(url)
+        soup = opensoup(prod_url)
         tables = soup.findAll("table")
         table = tables[n-1]
         for body in table.findAll('tbody'):
@@ -134,22 +134,32 @@ for i in range(1,8769):
                   value = l[0]
                 break
               a+=1
-            data[name][key]=value
-      count+=1
+            if value=="&lt;" or value=="&gt;" or value=="?":
+              continue
+            else:
+              flag = 1
+              if key=="NutriScore":
+                  flag2 = 1
+              data[name][key]=value
+        if flag!=1 or flag2!=1:
+            del data[name]
+            count-=1
+        else:
+            print(".....product "+str(count-1))
 
 if not os.path.exists(path):
     os.makedirs(path)
-with open(path+'data.json', 'w') as outfile:
-    json.dump(data, outfile, sort_keys = True, indent = 4)
+#with open(path+'data.json', 'a') as outfile:
+#    json.dump(data, outfile, sort_keys = True, indent = 4)
 
-print("Commencing Image scraping for:")
-for product in data:
-  img_src = data[product]['nutrition_label_src']
-  r = requests.get(img_src)
-  with open(path+data[product]['file_name'], 'wb') as f:
-    f.write(r.content)
-    f.close()
-  print (product)
+#print("Commencing Image scraping for:")
+#for product in data:
+#  img_src = data[product]['nutrition_label_src']
+#  r = requests.get(img_src)
+#  with open(path+data[product]['file_name'], 'wb') as f:
+#    f.write(r.content)
+#    f.close()
+#  print (product)
   # Retrieve HTTP meta-data
 
 print("Finished in :"+str(time.time()-start_time)+" seconds")
