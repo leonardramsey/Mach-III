@@ -4,11 +4,86 @@
 <body>
 <p></p>
 <p align="center">Upload Nutrition Label</p>
+{% if message %}
+<p>{{ message }}</p>
+{% endif %}
+<video width="280" height="140" id="screenshot-video" class="videostream" style="alignment: left;" autoplay=""></video>
+<div id="imagepreview" class="imagepreview" style="display: None; padding-left: 15px">
+    <p><b>Preview:</b></p>
+    <img width="265" height="140" id="screenshot_img" name="screenshot_img" class="screenshot_img" src="">
+</div>
+<p>
+    <button id="capture-button" class="capture-button">Start photo capture</button>
+    <button id="screenshot-button" class="screenshot-button">Take Photo</button>
+</p>
 <form action="{% url 'home' %}" method="post">
     {% csrf_token %}
     <label for="label_img">Nutrition Label: </label>
-    <input id="label_img" type="file" name="label_img" accept="image/*">
     <br>
+    <input type="file" id="label_img" name="label_img" accept="image/*;capture=camera">
+    <br>
+    <input type="hidden" id="screenshot_img_input" name="screenshot_img_input" accept="image/*;capture=camera">
+    <br>
+    <canvas style="display:none;"></canvas>
     <input type="submit" value="Submit">
 </form>
+<script>
+    console.log('we have user media!');
+    const constraints = {video: true};
+    console.log('captureVideoButton');
+    console.log(document.getElementById('capture-button'));
+    const captureVideoButton = document.getElementById('capture-button');
+    console.log('screenshotButton');
+    console.log(document.getElementById('screenshot-button'));
+    const screenshotButton = document.getElementById('screenshot-button');
+    console.log('img');
+    console.log(document.getElementById('screenshot_img'));
+    const img = document.getElementById('screenshot_img');
+    console.log('video');
+    console.log(document.getElementsByClassName('videostream')[0]);
+    const video =document.getElementsByClassName('videostream')[0];
+    console.log('image_preview');
+    console.log(document.getElementById('imagepreview'));
+    const image_preview = document.getElementById('imagepreview');
+    console.log('image input');
+    console.log(document.getElementById('screenshot_img_input'));
+    const image_input = document.getElementById('screenshot_img_input');
+
+    const canvas = document.createElement('canvas');
+
+    function hasGetUserMedia() {
+        return !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
+    }
+
+    function handleSuccess(stream) {
+      screenshotButton.disabled = false;
+      video.srcObject = stream;
+    }
+
+    function handleError(error) {
+        console.error('Error: ', error);
+    }
+
+    if (hasGetUserMedia()) {
+        captureVideoButton.onclick = function() {
+          console.log('captureVideoButton clicked beginning')
+          navigator.mediaDevices.getUserMedia(constraints).then(handleSuccess).catch(handleError);
+          console.log('captureVideoButton clicked end')
+        };
+
+        screenshotButton.onclick = video.onclick = function() {
+          console.log('captureVideoButton clicked beginning')
+          canvas.width = video.videoWidth;
+          canvas.height = video.videoHeight;
+          canvas.getContext('2d').drawImage(video, 0, 0);
+          // Other browsers will fall back to image/png
+          img.src = canvas.toDataURL('image/webp');
+          image_preview.style.display = "inline";
+          image_input.value = img.src;
+          console.log('captureVideoButton clicked end')
+        };
+    } else {
+      alert('getUserMedia() is not supported by your browser');
+    }
+</script>
 {% endblock %}
