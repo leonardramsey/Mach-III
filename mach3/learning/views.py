@@ -16,10 +16,6 @@ def index(request):
         label_img = request.POST.get("label_img", "")
         screenshot_img = request.POST.get("screenshot_img_input", "")
         message = 'Image invalid. Please upload an image of a nutrition label.'
-        print('screenshot_img')
-        print(screenshot_img)
-        print('label_img')
-        print(label_img)
         if screenshot_img:
             payload = {'label_img': label_img, 'user': request.user}
             # response = requests.post('https://httpbin.org/get', params=payload)
