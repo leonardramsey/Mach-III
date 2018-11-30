@@ -20,7 +20,7 @@
     {% csrf_token %}
     <label for="label_img">Nutrition Label: </label>
     <br>
-    <input type="file" id="label_img" name="label_img" accept="image/*;capture=camera">
+    <input type="file" id="label_img" name="label_img" accept="image/*;capture=camera" onchange="loadFile(event)">
     <br>
     <input type="hidden" id="screenshot_img_input" name="screenshot_img_input" accept="image/*;capture=camera">
     <br>
@@ -64,6 +64,14 @@
         console.error('Error: ', error);
     }
 
+    var loadFile = function(event) {
+        var reader = new FileReader();
+        reader.onload = function(){
+        img.src = reader.result;
+        };
+        reader.readAsDataURL(event.target.files[0]);
+    };
+
     if (hasGetUserMedia()) {
         captureVideoButton.onclick = function() {
           console.log('captureVideoButton clicked beginning')
@@ -85,5 +93,6 @@
     } else {
       alert('getUserMedia() is not supported by your browser');
     }
+
 </script>
 {% endblock %}

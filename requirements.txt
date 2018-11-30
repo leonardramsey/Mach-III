@@ -5,6 +5,8 @@ numpy==1.14.1
 scipy==1.0.0
 pandas==0.22.0
 matplotlib==2.1.2
+boto3==1.6.18
+django-storages==1.6.6
 BeautifulSoup4==4.6.3
 BeautifulSoup==3.2.1
 lxml==4.2.5
