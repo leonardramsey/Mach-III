@@ -1,9 +1,7 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
-
-from django.http import JsonResponse
 from django.shortcuts import render
-import requests
+import base64, os, urllib, requests
 
 # Create your views here.
 
@@ -17,22 +15,28 @@ def index(request):
         screenshot_img = request.POST.get("screenshot_img_input", "")
         message = 'Image invalid. Please upload an image of a nutrition label.'
         if screenshot_img:
-            payload = {'label_img': label_img, 'user': request.user}
-            # response = requests.post('https://httpbin.org/get', params=payload)
-            # check response
-            message = 'Image upload successful.'
-            rating = ratings[2]
             source = screenshot_img
-        elif label_img:
+            with open('../Tesseract/images/image.jpg', 'wb') as img:
+                screenshot_img = screenshot_img.partition(',')[2]
+                padding= len(screenshot_img) % 4
+                screenshot_img += b"=" * padding
+                img.write(base64.b64decode(screenshot_img))
             payload = {'label_img': label_img, 'user': request.user}
             # response = requests.post('https://httpbin.org/get', params=payload)
             # check response
             message = 'Image upload successful.'
             rating = ratings[2]
+        elif label_img:
             source = label_img
+            payload = {'label_img': label_img, 'user': request.user}
+            with open("./images/img.jpg", 'w+'):
+                pass
+            # response = requests.post('https://httpbin.org/get', params=payload)
+            # check response
+            message = 'Image upload successful.'
+            rating = ratings[2]
         else:
             return render(request, 'general/index.html', {'message':message})
-        # return JsonResponse({'message': message})
         return render(request, 'general/result.html', {'rating': rating, 'source':source})
     return render(request, 'general/index.html', {'message': message})
 

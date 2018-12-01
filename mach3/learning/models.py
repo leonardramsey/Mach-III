@@ -7,3 +7,6 @@ from django.db import models
 
 # use default Django user model to store basic user information (username/pass, email, name, etc.)
 # make profile model w/ 1-1 mapping to user model based on id, where profile includes nutrtion preferences/stats
+class Item(models.Model):
+    image_file = models.ImageField(upload_to='images')
+    image_url = models.URLField()
