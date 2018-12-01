@@ -141,3 +141,4 @@ def prediction(img):
 
     score = clf.predict(data_prepared)
     print(score)
+    return score
