@@ -24,6 +24,139 @@ from sklearn.linear_model import SGDClassifier
 from sklearn.ensemble import RandomForestClassifier, AdaBoostClassifier, VotingClassifier, ExtraTreesClassifier
 from sklearn.neural_network import MLPClassifier
 
+score_conversion = {'A': 2, 'B': 2, 'C': 1, 'D': 0, 'E': 0, 0: -1}
+
+# data clean
+def data_cleanup(data):
+    # number scaling and imputing
+    data_num = data.copy()
+    if 'NutriScore' in data_num:
+        data_num = data_num.drop('NutriScore', axis=1)
+
+    num_pipeline = Pipeline([
+        ('imputer', Imputer(strategy="median")),
+        ('std_scaler', StandardScaler()),
+    ])
+
+    data_num_tr_nd = num_pipeline.fit_transform(data_num)
+
+    data_num_tr = pd.DataFrame(data_num_tr_nd, columns=data_num.columns,
+                               index=list(data_num.index.values))
+
+    # # prepared data
+    # data_prepared = data
+    # print('----------------------- data_prepared --------------------')
+    # print(len(data_prepared.columns))
+    # print(data_prepared.columns)
+    # print('----------------------- data_num --------------------')
+    # print(len(data_num_tr.columns))
+    # print(data_num_tr.columns)
+    #
+    # # update columns in processed data frame
+    # for feature in data_prepared:
+    #     data_prepared[feature] = data_num_tr[feature]
+
+    return data_num_tr
+
+def classifier_metrics(y_test, y_pred):
+    return accuracy_score(y_test, y_pred), precision_score(y_test, y_pred, average='weighted'), recall_score(y_test,
+                                                                                                             y_pred,
+                                                                                                             average='weighted')
+
+def ml():
+    # read in data
+    print('Reading data...')
+    with open('../data/data_v3.json') as f:
+        data = json.load(f)
+
+    # get the columns
+    columns = []
+    for title in data:
+        for feature in data[title]:
+            if feature not in columns:
+                columns.append(feature)
+    label_info = pd.DataFrame(columns=columns)
+
+    i = 0
+    # build dataframe
+    for title in data:
+        if 'NutriScore' in data[title]:
+            data[title]['NutriScore'] = score_conversion[data[title].get('NutriScore', 0)]
+            label_info.loc[i] = pd.Series(data[title])
+            i += 1
+    label_info['NutriScore'] = pd.to_numeric(label_info['NutriScore'])
+
+    # data clean
+    label_info = label_info.fillna(0)
+    label_info = label_info.drop(['Nutrition score  France', 'url', 'file_name', 'nutrition_label_src', 'sno'], axis=1)
+    full_data = label_info.copy()
+    print(len(full_data.columns))
+    #     label_info = label_info.dropna(thresh=len(label_info) - 750, axis=1)
+    label_info = label_info.dropna(thresh=25, axis=0)
+    print(len(label_info.columns))
+    difference = set(full_data.columns).difference(set(label_info.columns))
+    print('------------------------------- Difference ---------------------------')
+    print(difference)
+
+    for feature in label_info:
+        try:
+            label_info = label_info.apply(pd.to_numeric, errors='coerce')
+        except Exception:
+            print(str(feature) + " - unable to cast to numeric data type.")
+
+    train_set, test_set = train_test_split(label_info, test_size=0.2, random_state=48, stratify=label_info.NutriScore)
+
+    # data split
+    # print('----------------------- X_train -----------------------')
+    X_train = data_cleanup(train_set)
+    # print(X_train.head())
+    # print('----------------------- y_train -----------------------')
+    y_train = train_set['NutriScore']
+    # print(y_train.head())
+    # print('----------------------- X_test -----------------------')
+    X_test = data_cleanup(test_set)
+    # print(X_test.head())
+    # print('----------------------- y_test -----------------------')
+    y_test = test_set['NutriScore']
+    # print(y_test.head())
+
+    rnd_clf2 = RandomForestClassifier(n_estimators=200, random_state=42)
+    rnd_clf2.fit(X_train, y_train)
+    y_pred_rnd_clf2 = rnd_clf2.predict(X_test)
+
+    rnd_clf3 = RandomForestClassifier(n_estimators=500, random_state=42)
+    rnd_clf3.fit(X_train, y_train)
+    y_pred_rnd_clf3 = rnd_clf3.predict(X_test)
+
+    # SVM
+    c_list = [.1, 1, 10]
+    gamma_list = [.01, .1, 1, 5]
+    hyperparams = [(g, c) for g in gamma_list for c in c_list]
+    best_gamma_C = None
+    best_precision_rbf = 0
+
+    # RBF SVC
+    count2 = 1
+    for gamma, C in hyperparams:
+        rbf_svm_clf = SVC(kernel="rbf", gamma=gamma, C=C, probability=True)
+        rbf_svm_clf.fit(X_train, y_train)
+        y_pred_rbf_svm_clf = rbf_svm_clf.predict(X_test)
+        accuracy, precision, recall = classifier_metrics(y_test, y_pred_rbf_svm_clf)
+        if precision > best_precision_rbf:
+            best_precision_rbf = precision
+            best_gamma_C = (gamma, C)
+        count2 += 1
+
+    # best RBF SVC
+    rbf_svm_clf = SVC(kernel="rbf", gamma=best_gamma_C[0], C=best_gamma_C[1], probability=True)
+    rbf_svm_clf.fit(X_train, y_train)
+
+    # voting
+    voting_clf = VotingClassifier(estimators=[('rf2', rnd_clf2), ('rf3', rnd_clf3), ('rbf', rbf_svm_clf)],
+                                  voting='hard')
+    voting_clf.fit(X_train, y_train)
+    return voting_clf, X_train.columns
+
 def words(text): return re.findall(r'\w+', text.lower())
 
 WORDS = Counter(words(open('Tesseract/big.txt').read()))
@@ -82,6 +215,7 @@ def get_test_data(img):
    'Omega 6 fatty acids', '&nbsp;  Lactose',
    'Carbon footprint / CO2 emissions', 'Ecological footprint',
    'added sugars', '&nbsp;  Alpha-linolenic acid / ALA (18:3 n-3)']
+   #  features = ['Energy from fat','Sodium','Monounsaturated fat','Trans fat','Potassium','Fat','Dietary fiber','Proteins','Calcium','Vitamin A','Iron','Cholesterol','Salt','Energy','Sugars','Carbohydrate','Saturated fat','Vitamin C (ascorbic acid)','Alcohol','Polyunsaturated fat','Vitamin B1 (Thiamin)','Vitamin B6 (Pyridoxin)','Vitamin B9 (Folic acid)','Vitamin B2 (Riboflavin)','Phosphorus','Vitamin B12 (cobalamin)','Magnesium','Vitamin D','Vitamin B3 / Vitamin PP (Niacin)','Zinc','\"Fruits, vegetables and nuts (minimum)\"','Pantothenic acid / Pantothenate (Vitamin B5)','&nbsp;  Lactose','Vitamin E','Cocoa (minimum)','Omega 3 fatty acids','Folates (total folates)','Copper','Chromium','\"Fruits, vegetables and nuts (estimate from ingredients list)\"','Erythritol','&nbsp;  Oleic acid (18:1 n-9)','Selenium','Omega 6 fatty acids','Caffeine','&nbsp;  Soluble fiber','&nbsp;  Insoluble fiber','FIBRA DIÉTETICA','Biotin','Vitamin K','Omega3 DHA (Docosahexaenoic Acid)','Omega3 Other','Omega3 EPA (Eicosapentaenoic Acid)','added sugars','Guarana Seed Extract','Taurine','FIBRA DIETÉTICA','Manganese','Molybdenum','Sugar alcohols (Polyols)','Iodine','Carbon footprint / CO2 emissions','Ecological footprint']
     textDetections=response['TextDetections']
     output = {}
     for nutrition in features:
@@ -112,12 +246,13 @@ def get_test_data(img):
         if feature != last_feat:
             ret_string += feature+","
     ret_string += last_feat
-    ret_string += features[-1]+"\n"
+    ret_string += "\n"
     for feature in output:
         if feature != last_feat:
             ret_string += str(output[feature])+","
     ret_string += str(output[last_feat])+"\n"
-
+    print('-------------------------- ret_string --------------------------')
+    print(ret_string)
     f = open("Tesseract/output.csv","w")
     f.write(ret_string)
     f.close()
@@ -125,8 +260,18 @@ def get_test_data(img):
 def prediction(img):
     get_test_data(img)
     data = pd.read_csv('Tesseract/output.csv')
-    print(data)
-    clf = pickle.load(open("Tesseract/hoosfit.pkl","rb"))
+    data = data.apply(pd.to_numeric, errors='coerce')
+    print('-------------------------- Data columns: --------------------------')
+    print(len(data.columns))
+    print(data.columns)
+    # clf = pickle.load(open("Tesseract/hoosfit.pkl","rb"))
+    clf, model_columns = ml()
+    print('-------------------------- X_train columns: --------------------------')
+    print(len(model_columns))
+    print(model_columns)
+    difference = set(data.columns).difference(set(model_columns))
+    print('------------------------------- Difference ---------------------------')
+    print(difference)
     if 'NutriScore' in data:
         data = data.drop('NutriScore', axis=1)
     data_num = data
@@ -141,6 +286,9 @@ def prediction(img):
     for feature in data_prepared:
         data_prepared[feature] = data_num_tr[feature]
 
+    print('-------------------------- Data_prepared columns: --------------------------')
+    print(len(data_prepared.columns))
+    print(data_prepared.columns)
     score = clf.predict(data_prepared)
-    print(score)
-    return score
+    print(score[0])
+    return score[0]
