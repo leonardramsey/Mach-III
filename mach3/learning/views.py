@@ -2,6 +2,7 @@
 from __future__ import unicode_literals
 from django.shortcuts import render
 import base64, os, urllib, requests
+from Tesseract import ocr
 
 # Create your views here.
 
@@ -16,25 +17,21 @@ def index(request):
         message = 'Image invalid. Please upload an image of a nutrition label.'
         if screenshot_img:
             source = screenshot_img
-            with open('../Tesseract/images/image.jpg', 'wb') as img:
+            with open('Tesseract/images/image.jpg', 'wb') as img:
                 screenshot_img = screenshot_img.partition(',')[2]
                 padding= len(screenshot_img) % 4
-                screenshot_img += b"=" * padding
+                screenshot_img += (b"=" * padding).decode('utf-8')
                 img.write(base64.b64decode(screenshot_img))
-            payload = {'label_img': label_img, 'user': request.user}
-            # response = requests.post('https://httpbin.org/get', params=payload)
-            # check response
+                score = ocr.prediction('Tesseract/images/image2.jpg')
             message = 'Image upload successful.'
-            rating = ratings[2]
+            rating = ratings[score]
         elif label_img:
             source = label_img
-            payload = {'label_img': label_img, 'user': request.user}
-            with open("./images/img.jpg", 'w+'):
-                pass
-            # response = requests.post('https://httpbin.org/get', params=payload)
-            # check response
+            with open('Tesseract/images/image.jpg', 'wb') as img:
+                img.write(label_img)
+                score = ocr.prediction('Tesseract/images/image.jpg')
             message = 'Image upload successful.'
-            rating = ratings[2]
+            rating = ratings[score]
         else:
             return render(request, 'general/index.html', {'message':message})
         return render(request, 'general/result.html', {'rating': rating, 'source':source})

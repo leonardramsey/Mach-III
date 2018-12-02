@@ -1,6 +1,7 @@
+# coding=utf-8
 import re
 from collections import Counter
-from autocorrect import spell
+# from autocorrect import spell
 import boto3
 import os
 import traceback
@@ -25,7 +26,7 @@ from sklearn.neural_network import MLPClassifier
 
 def words(text): return re.findall(r'\w+', text.lower())
 
-WORDS = Counter(words(open('F:\\ML\\Mach-III\\Mach-III\\mach3\\Tesseract\\big.txt').read()))
+WORDS = Counter(words(open('Tesseract/big.txt').read()))
 
 def P(word, N=sum(WORDS.values())):
     "Probability of `word`."
@@ -90,7 +91,6 @@ def get_test_data(img):
         if(text["Type"] == 'LINE'):
             fullline = correction(text['DetectedText'])
             line = re.sub(r'[,|-]',r'',fullline)
-            print(line)
             matches = [0] * len(features)
             ll1 = str(line).lower().split(" ")
             for i in range(len(features)):
@@ -118,13 +118,15 @@ def get_test_data(img):
             ret_string += str(output[feature])+","
     ret_string += str(output[last_feat])+"\n"
 
-    return ret_string
-#f = open("output.csv","w")
-#f.write(ret_string)
-#f.close()
+    f = open("Tesseract/output.csv","w")
+    f.write(ret_string)
+    f.close()
+
 def prediction(img):
-    data = get_test_data(img)
-    clf = pickle.load(open("hoosfit.pkl","rb"))
+    get_test_data(img)
+    data = pd.read_csv('Tesseract/output.csv')
+    print(data)
+    clf = pickle.load(open("Tesseract/hoosfit.pkl","rb"))
     if 'NutriScore' in data:
         data = data.drop('NutriScore', axis=1)
     data_num = data
@@ -141,3 +143,4 @@ def prediction(img):
 
     score = clf.predict(data_prepared)
     print(score)
+    return score
